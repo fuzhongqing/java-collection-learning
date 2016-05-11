@@ -28,13 +28,11 @@ public class Vector<E> extends AbstractList<E>
 	protected Object[] ds;
 	protected int numberOfElement;
 	protected int incr;
-	protected int vectorSize;
 	
 	public Vector(int vsz ,int inc) {
 		if (vsz < 0) throw new IllegalArgumentException("Illegal VectorSize : "+ vsz);
 		if (inc < 0) throw new IllegalArgumentException("Illegal increment number : "+ inc);
-		vectorSize = vsz;
-		ds = new Object[vectorSize];
+		ds = new Object[vsz];
 		incr = inc;
 		numberOfElement = 0;
 		modCount ++ ;
@@ -53,11 +51,10 @@ public class Vector<E> extends AbstractList<E>
 	
 	private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 	private void autoGrow(int i) {
-		int oldSize = vectorSize;
+		int oldSize = ds.length;
 		int newSize = oldSize + ((incr == 0) ? oldSize : incr);
 		if (newSize < i) newSize = i;
 		if (newSize - MAX_ARRAY_SIZE > 0) newSize = MAX_ARRAY_SIZE;
-		vectorSize = newSize;
 		ds = Arrays.copyOf(ds, newSize);
 		modCount ++;
 	}
@@ -70,7 +67,7 @@ public class Vector<E> extends AbstractList<E>
 		modCount ++;
 	}
 	private void arraySpaceTest(int i) {
-		if (vectorSize < i) autoGrow(i);
+		if (ds.length < i) autoGrow(i);
 	}
 	@SuppressWarnings("unchecked")
 	@Override
@@ -107,21 +104,20 @@ public class Vector<E> extends AbstractList<E>
 	}
 	
 	public int vsz() {
-		return vectorSize;
+		return ds.length;
 	}
 	
 	public void copyToAnArray(Object[] array) {
 		System.arraycopy(ds, 0, array, 0, numberOfElement);
 	}
 	public void dropUselessSpace() {
-		if (vectorSize > numberOfElement) {
-			vectorSize = numberOfElement;
+		if (ds.length > numberOfElement) {
 			ds = Arrays.copyOf(ds, numberOfElement);
 		}
 		modCount++;
 	}
 	public void setSize(int s) {
-		if (s > vectorSize) {
+		if (s > ds.length) {
 			arraySpaceTest(s);
 		} else {
 			for (int i = s; i<numberOfElement;i++)
