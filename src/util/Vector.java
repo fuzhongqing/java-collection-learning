@@ -46,7 +46,6 @@ public class Vector<E> extends AbstractList<E>
 	public Vector(Collection<? extends E> c) {
 		ds = c.toArray();
 		numberOfElement = ds.length;
-		vectorSize = ds.length;
 	}
 	
 	private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
