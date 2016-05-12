@@ -3,16 +3,21 @@
  */
 package util;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.RandomAccess;
-
-import org.junit.internal.ArrayComparisonFailure;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * @author fuzho
@@ -72,9 +77,9 @@ public class Vector<E> extends AbstractList<E>
 	}
 	
 	@Override
-	public E set(int index, E element) {
+	public E set(int index, E e) {
 		E oldElement = get(index); // if you can get it, you must can set it.
-		ds[index] = element;
+		ds[index] = e;
 		return oldElement;
 	}
 	@Override
@@ -88,11 +93,14 @@ public class Vector<E> extends AbstractList<E>
 	public void add(int index, E element) {
 		insertElementAt(index, element);
 	}
+	
 	@Override
 	public int size() {
 		return numberOfElement;
 	}
-	
+	public void clear() {
+		removeAllElement();
+	}
 	@Override
 	public boolean isEmpty() {
 		return numberOfElement == 0;
@@ -204,7 +212,7 @@ public class Vector<E> extends AbstractList<E>
 		ds[index] = o;
 	}
 	
-	public void removeElementAt(int index) {
+	public boolean removeElementAt(int index) {
 		if (index >= numberOfElement) throw new ArrayIndexOutOfBoundsException(index + " >= "+
 				   numberOfElement);
 		if (index < 0) throw new ArrayIndexOutOfBoundsException(index + " < 0");
@@ -213,6 +221,7 @@ public class Vector<E> extends AbstractList<E>
 		if (FragmentSize > 0) System.arraycopy(ds, index + 1, ds, index, FragmentSize);
 		numberOfElement --;
 		ds[numberOfElement] = null; //尾部产生一个多余元素 等待GC回收
+		return true;
 	}
 	private void insertElementAt(int index,Object obj) {
 		if (index > numberOfElement) throw new ArrayIndexOutOfBoundsException(index);
@@ -227,6 +236,13 @@ public class Vector<E> extends AbstractList<E>
 	}
 	public void addElement(E o) {
 		add(o);
+	}
+	public boolean addAllElement(Collection<? extends E>[] o) {
+		int newSize = o.length + numberOfElement;
+		arraySpaceTest(newSize);
+		System.arraycopy(o, 0, ds, numberOfElement, o.length);
+		numberOfElement += o.length;
+		return o.length!=0;
 	}
 	public boolean removeFirstElement(Object o) {
 		int index = indexOf(o);
@@ -255,9 +271,56 @@ public class Vector<E> extends AbstractList<E>
 		o.numberOfElement = this.numberOfElement;
 		return o;
 	}
+	public synchronized boolean addAll(Collection<E> c,int index) {
+        if (index < 0 || index > numberOfElement)
+            throw new ArrayIndexOutOfBoundsException(index);
+		Object[] newArray = c.toArray();
+		int newSize = newArray.length + numberOfElement;
+		arraySpaceTest(newSize);
+		
+		System.arraycopy(ds, index, ds, index+ newArray.length, numberOfElement - index); 
+		System.arraycopy(newArray, 0, ds, index, newArray.length);
+		
+		modCount ++;
+		return (newArray.length != 0);
+	}
+	public synchronized void removeRange(int fromIndex,int toIndex) {
+		if (fromIndex > toIndex) throw new IllegalArgumentException("fromIndex:"+fromIndex+ " > " + "toIndex:" + toIndex);
+		if (fromIndex < 0) throw new ArrayIndexOutOfBoundsException(fromIndex +" < 0");
+		if (toIndex >= numberOfElement) new ArrayIndexOutOfBoundsException(toIndex +" >= "+ numberOfElement);
+		
+        int numMoved = numberOfElement - toIndex;
+        System.arraycopy(ds, toIndex, ds, fromIndex,
+                         numMoved);
+
+        int newnumberOfElement = numberOfElement - (toIndex-fromIndex);
+        while (numberOfElement != newnumberOfElement)
+            ds[--numberOfElement] = null;
+	}
+	//code from java.util.Vector
+	private void writeObject(java.io.ObjectOutputStream s) throws IOException {
+		final java.io.ObjectOutputStream.PutField fields = s.putFields();
+        final Object[] data;
+        synchronized (this) {
+            fields.put("capacityIncrement", incr);
+            fields.put("elementCount", numberOfElement);
+            data = ds.clone();
+        }
+        fields.put("elementData", data);
+        s.writeFields();
+	}
 	
 	public Object[] toArray() {
 		return Arrays.copyOf(ds, numberOfElement);
+	}
+	public synchronized boolean containsAll(Collection<?> c) {
+		return super.containsAll(c);
+	}
+	public synchronized boolean removeAll(Collection<?> c) {
+		return super.removeAll(c);
+	}
+	public synchronized boolean retainAll(Collection<?> c) {
+		return super.retainAll(c);
 	}
 	
 	public boolean equals(Object o) {
@@ -269,4 +332,175 @@ public class Vector<E> extends AbstractList<E>
 	public String toString() {
 		return super.toString();
 	}
+	
+	private class Itr implements Iterator<E> {
+
+		int cursor = 0;
+		int lstRet = -1;
+		int expectedModCount = modCount;
+		@Override
+		public boolean hasNext() {
+			return cursor != numberOfElement;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public E next() {
+			checkHasMod();
+			if (cursor >= numberOfElement) throw new NoSuchElementException();
+			lstRet = cursor++;
+			return (E) ds[lstRet];
+		}
+		
+		public void remove() {
+            if (lstRet == -1)
+                throw new IllegalStateException();
+            synchronized (Vector.this) {
+    			checkHasMod();
+                Vector.this.remove(lstRet);
+                expectedModCount = modCount;
+            }
+            cursor = lstRet;
+            lstRet = -1;
+		}
+		@SuppressWarnings({ "unchecked" })
+		public void forEachReminding(Consumer<? super E> action) {
+			Objects.requireNonNull(action);
+			synchronized (Vector.this) {
+				final int size = numberOfElement;
+				if (cursor >= size) {
+					return;
+				}
+				int i = cursor;
+				while (modCount==expectedModCount&&i!=size) {
+					action.accept((E) ds[i++]);
+				}
+                cursor = i;
+                lstRet = i - 1;
+                checkHasMod();
+			}
+		}
+		boolean checkHasMod() {
+			return modCount != expectedModCount;
+		}
+	}
+	
+    final class ListItr extends Itr implements ListIterator<E> {
+        ListItr(int index) {
+            super();
+            cursor = index;
+        }
+        
+		@Override
+		public boolean hasPrevious() {
+			return cursor != 0;
+		}
+		
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public E previous() {
+			synchronized (Vector.this) {
+                checkHasMod();
+                int i = cursor - 1;
+                if (i < 0)
+                    throw new NoSuchElementException();
+                cursor = i;
+                return (E) ds[lstRet = i];
+            }
+		}
+
+		@Override
+		public int nextIndex() {
+			return cursor;
+		}
+
+		@Override
+		public int previousIndex() {
+			if (cursor == 0) throw new NoSuchElementException();
+			return cursor - 1;
+		}
+
+		@Override
+		public void set(E e) {
+            if (lstRet == -1)
+                throw new IllegalStateException();
+            synchronized (Vector.this) {
+                checkHasMod();
+                Vector.this.set(lstRet, e);
+            }
+		}
+
+		@Override
+		public void add(E e) {
+            int i = cursor;
+            synchronized (Vector.this) {
+                checkHasMod();
+                Vector.this.add(i, e);
+                expectedModCount = modCount;
+            }
+            cursor = i + 1;
+            lstRet = -1;
+		}
+		
+	}
+    
+    public synchronized Iterator<E> iterator() {
+        return new Itr();
+    }
+    public synchronized ListIterator<E> listIterator() {
+    	return new ListItr(0);
+    }
+    
+    @SuppressWarnings("unchecked")
+	@Override
+    public void forEach(Consumer<? super E> action) {
+    	Objects.requireNonNull(action);
+    	
+    	for (int i = 0;i < numberOfElement; ++i)
+    		action.accept((E) ds[i]);
+    	
+    }
+    
+    @SuppressWarnings("unchecked")
+	public boolean removeIf(Predicate<? super E> filter) {
+    	boolean isSomeElemRemoved = false;
+    	
+    	for (int i = 0;i < numberOfElement; ++i)
+    		if (filter.test((E) ds[i])) {
+    			remove(i); //TODO:这样做太过于费时，应该把待删元素提交给一个待删集合，然后批量操作待删元素
+    			i --;
+    		}
+    	
+    	return isSomeElemRemoved;
+    }
+
+	@SuppressWarnings("unchecked")
+    public E[] takeIf(Predicate<? super E> filter) {
+		E[] d = (E[]) new Object[ds.length]; //最坏情况:filter是永真表达式
+		int okCaseCount = 0;
+    	for (int i = 0;i < numberOfElement; ++i)
+    		if (filter.test((E) ds[i])) {
+    			d[okCaseCount++] = (E) ds[i];
+    		}
+    	return d;
+    }
+    @SuppressWarnings("unchecked")
+	public void sort(Comparator<? super E> c) {
+        Arrays.sort((E[]) ds, 0, numberOfElement, c);
+    }
+    @SuppressWarnings("unchecked")
+	public void sort() {
+    	sort(new DefaultComparator());
+    }
+    @SuppressWarnings("rawtypes")
+	class DefaultComparator implements Comparator {
+
+		@Override
+		public int compare(Object o1, Object o2) {
+			return o1.hashCode() - o2.hashCode();
+		}
+    	
+    }
+    //TODO:: Spliterator
 }
