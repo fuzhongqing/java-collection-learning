@@ -7,8 +7,12 @@ import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.RandomAccess;
+
+import org.junit.internal.ArrayComparisonFailure;
 
 /**
  * @author fuzho
@@ -55,14 +59,6 @@ public class Vector<E> extends AbstractList<E>
 		if (newSize < i) newSize = i;
 		if (newSize - MAX_ARRAY_SIZE > 0) newSize = MAX_ARRAY_SIZE;
 		ds = Arrays.copyOf(ds, newSize);
-		modCount ++;
-	}
-	private void insertElementAt(int index,Object obj) {
-		if (index > numberOfElement) throw new ArrayIndexOutOfBoundsException(index);
-		arraySpaceTest(numberOfElement + 1);
-		System.arraycopy(ds, index, ds, index+1, numberOfElement-index);
-		ds[index] = obj;
-		numberOfElement ++;
 		modCount ++;
 	}
 	private void arraySpaceTest(int i) {
@@ -124,5 +120,153 @@ public class Vector<E> extends AbstractList<E>
 			numberOfElement = s;
 		}
 		modCount++;
+	}
+	public Enumeration<E> elements() {
+		return elements(0);
+	}
+	public Enumeration<E> elements(int index) {
+		return new Enumeration<E>() {
+			
+			int currPostion = index;
+			@Override
+			public boolean hasMoreElements() {
+				return currPostion < numberOfElement;
+			}
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public E nextElement() {
+				return hasMoreElements() ? (E) ds[currPostion++] : null;
+			}
+		};
+	}
+	
+	public int indexOf(Object o, int index) {
+		if (o == null) {
+			for (int i = index; i < numberOfElement; ++i)
+				if (ds[i] == null) return i;
+		} else {
+			for (int i = index; i < numberOfElement; ++i)
+				if (ds[i].equals(o)) return i;
+		}
+		return -1;
+	}
+	
+	public int indexOf(Object o) {
+		return indexOf(o, 0);
+	}
+	
+	public boolean contains(Object o) {
+		return (indexOf(o)!=-1);
+	}
+	
+	public int lastIndexOf(Object o, int index) {
+		if (index >= numberOfElement) throw new IndexOutOfBoundsException(index + " >= " 
+																          + numberOfElement);
+		if (o== null) {
+			for (int i = index;i>=0;--i) {
+				if (ds[i]==null)
+					return i;
+			} 
+		}else {
+			for (int i = index;i>=0;--i) {
+				if (ds[i].equals(o))
+					return i;
+			} 
+		}
+		return -1;
+	}
+	
+	public int lastIndexOf(Object o) {
+		return lastIndexOf(o,numberOfElement - 1);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public E elementAt(int index) {
+		if (index >=  numberOfElement) throw new ArrayIndexOutOfBoundsException(index + " >= "
+																				+ numberOfElement);
+		return (E) ds[index];
+	}
+	
+	public E firstElement() {
+		if (numberOfElement == 0) throw new NoSuchElementException();
+		return elementAt(0);
+	}
+	
+	public E lastElement() {
+		if (numberOfElement == 0) throw new NoSuchElementException();
+		return elementAt(numberOfElement - 1); 
+	}
+	
+	public void setElementAt(Object o,int index) {
+		if (index >= numberOfElement) throw new ArrayIndexOutOfBoundsException(index + " >= "+
+																			   numberOfElement);
+		ds[index] = o;
+	}
+	
+	public void removeElementAt(int index) {
+		if (index >= numberOfElement) throw new ArrayIndexOutOfBoundsException(index + " >= "+
+				   numberOfElement);
+		if (index < 0) throw new ArrayIndexOutOfBoundsException(index + " < 0");
+		int FragmentSize = numberOfElement - index - 1;
+		
+		if (FragmentSize > 0) System.arraycopy(ds, index + 1, ds, index, FragmentSize);
+		numberOfElement --;
+		ds[numberOfElement] = null; //尾部产生一个多余元素 等待GC回收
+	}
+	private void insertElementAt(int index,Object obj) {
+		if (index > numberOfElement) throw new ArrayIndexOutOfBoundsException(index);
+		arraySpaceTest(numberOfElement + 1);
+		System.arraycopy(ds, index, ds, index+1, numberOfElement-index);
+		ds[index] = obj;
+		numberOfElement ++;
+		modCount ++;
+	}
+	public void insertElementAt(E o ,int index) {
+		insertElementAt(index, o);
+	}
+	public void addElement(E o) {
+		add(o);
+	}
+	public boolean removeFirstElement(Object o) {
+		int index = indexOf(o);
+		if (index != -1) {
+			removeElementAt(index);
+			modCount ++;
+			return true;
+		}
+		modCount ++;
+		return false;
+	}
+	
+	public void removeAllElement() {
+		for (int i = 0;i < numberOfElement; ++i) {
+			ds[i] = null;
+		}
+		numberOfElement = 0;
+		modCount ++;
+	}
+	@SuppressWarnings("unchecked")
+	public Object clone() throws CloneNotSupportedException {
+		Vector<E> o = new Vector<>(vsz(), incr);
+		o = (Vector<E>) super.clone();
+		o.ds = this.ds;
+		o.modCount = 0;
+		o.numberOfElement = this.numberOfElement;
+		return o;
+	}
+	
+	public Object[] toArray() {
+		return Arrays.copyOf(ds, numberOfElement);
+	}
+	
+	public boolean equals(Object o) {
+		return super.equals(o);
+	}
+	public int hashCode() {
+		return super.hashCode();
+	}
+	public String toString() {
+		return super.toString();
 	}
 }
