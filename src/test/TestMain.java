@@ -2,6 +2,10 @@ package test;
 
 import util.Vector;
 import static org.junit.Assert.*;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 public class TestMain {
 
 	static void testVector() {
@@ -13,6 +17,7 @@ public class TestMain {
 		assertEquals(5, v.size());
 		assertEquals(8, v.vsz());
 		assertEquals(v.toString(),"[3, 1, 4, 1, 5]");
+
 		
 		Vector<Integer> copyOfv = new Vector<>(v);
 		
@@ -25,7 +30,8 @@ public class TestMain {
 		v.setSize(10);
 		assertEquals(10, v.vsz());
 		assertEquals(5, v.size());
-		
+		v.removeRange(1, 3);
+		assertEquals(v.toString(),"[3, 1, 5]");
 		System.out.println("Vector : all testcases passed!");
 	}
 	public static void main(String[] args) {
