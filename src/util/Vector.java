@@ -220,7 +220,7 @@ public class Vector<E> extends AbstractList<E>
 		
 		if (FragmentSize > 0) System.arraycopy(ds, index + 1, ds, index, FragmentSize);
 		numberOfElement --;
-		ds[numberOfElement] = null; //Î²²¿²úÉúÒ»¸ö¶àÓàÔªËØ µÈ´ıGC»ØÊÕ
+		ds[numberOfElement] = null; //è®¾ä¸ºç©ºå€¼ GCå›æ”¶
 		return true;
 	}
 	private void insertElementAt(int index,Object obj) {
@@ -468,7 +468,7 @@ public class Vector<E> extends AbstractList<E>
     	
     	for (int i = 0;i < numberOfElement; ++i)
     		if (filter.test((E) ds[i])) {
-    			remove(i); //TODO:ÕâÑù×öÌ«¹ıÓÚ·ÑÊ±£¬Ó¦¸Ã°Ñ´ıÉ¾ÔªËØÌá½»¸øÒ»¸ö´ıÉ¾¼¯ºÏ£¬È»ºóÅúÁ¿²Ù×÷´ıÉ¾ÔªËØ
+    			remove(i); //TODO:å¯ä»¥ä½¿ç”¨æ›´é«˜æ•ˆçš„æ–¹å¼ä»£æ›¿
     			i --;
     		}
     	
@@ -477,7 +477,7 @@ public class Vector<E> extends AbstractList<E>
 
 	@SuppressWarnings("unchecked")
     public E[] takeIf(Predicate<? super E> filter) {
-		E[] d = (E[]) new Object[ds.length]; //×î»µÇé¿ö:filterÊÇÓÀÕæ±í´ïÊ½
+		E[] d = (E[]) new Object[ds.length]; //
 		int okCaseCount = 0;
     	for (int i = 0;i < numberOfElement; ++i)
     		if (filter.test((E) ds[i])) {
