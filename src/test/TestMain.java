@@ -1,11 +1,9 @@
 package test;
 
+import util.Stack;
 import util.Vector;
 import static org.junit.Assert.*;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 public class TestMain {
 
 	static void testVector() {
@@ -34,8 +32,18 @@ public class TestMain {
 		assertEquals(v.toString(),"[3, 1, 5]");
 		System.out.println("Vector : all testcases passed!");
 	}
+	static void testStack() {
+		Stack<String> s = new Stack<>();
+		s.push("1st element");
+		s.push("2nd element");
+		s.push("3rd element");
+		s.pop();
+		assertEquals("2nd element", s.top());
+		System.out.println("Stack: all testcases passed!");
+	}
 	public static void main(String[] args) {
 		testVector();
+		testStack();
 	}
 
 }
